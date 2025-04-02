@@ -12,3 +12,17 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Image {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  url          String
+  status       String   @default("processing") // processing, valid, invalid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
