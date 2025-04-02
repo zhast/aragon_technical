@@ -1,5 +1,12 @@
-import { s3, bucketName } from "../config/s3Config";
+import {
+	PutObjectCommand,
+	GetObjectCommand,
+	DeleteObjectCommand,
+	ObjectCannedACL,
+} from "@aws-sdk/client-s3";
+import { s3Client, bucketName } from "../config/s3Config";
 import { randomUUID } from "crypto";
+import { Readable } from "stream";
 
 /**
  * Service for handling S3 operations
@@ -24,14 +31,19 @@ export class S3Service {
 			Key: key,
 			Body: file,
 			ContentType: contentType,
-			ACL: "public-read",
+			ACL: "public-read" as ObjectCannedACL,
 		};
 
 		try {
-			const data = await s3.upload(params).promise();
+			const command = new PutObjectCommand(params);
+			await s3Client.send(command);
+
+			// Construct the URL directly since we're using public-read ACL
+			const url = `https://${bucketName}.s3.amazonaws.com/${key}`;
+
 			return {
-				url: data.Location,
-				key: data.Key,
+				url,
+				key,
 			};
 		} catch (error) {
 			console.error("Error uploading file to S3:", error);
@@ -44,14 +56,22 @@ export class S3Service {
 	 * @param key The key of the file in S3
 	 * @returns The file data
 	 */
-	async getFile(key: string): Promise<AWS.S3.GetObjectOutput> {
+	async getFile(key: string): Promise<Buffer> {
 		const params = {
 			Bucket: bucketName,
 			Key: key,
 		};
 
 		try {
-			return await s3.getObject(params).promise();
+			const command = new GetObjectCommand(params);
+			const response = await s3Client.send(command);
+
+			// Convert stream to buffer
+			if (response.Body) {
+				const stream = response.Body as Readable;
+				return await this.streamToBuffer(stream);
+			}
+			throw new Error("Empty response body");
 		} catch (error) {
 			console.error("Error retrieving file from S3:", error);
 			throw new Error("Failed to retrieve file from S3");
@@ -69,11 +89,26 @@ export class S3Service {
 		};
 
 		try {
-			await s3.deleteObject(params).promise();
+			const command = new DeleteObjectCommand(params);
+			await s3Client.send(command);
 		} catch (error) {
 			console.error("Error deleting file from S3:", error);
 			throw new Error("Failed to delete file from S3");
 		}
+	}
+
+	/**
+	 * Helper method to convert a stream to a buffer
+	 * @param stream The readable stream to convert
+	 * @returns Promise that resolves to a Buffer
+	 */
+	private async streamToBuffer(stream: Readable): Promise<Buffer> {
+		return new Promise<Buffer>((resolve, reject) => {
+			const chunks: Buffer[] = [];
+			stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+			stream.on("end", () => resolve(Buffer.concat(chunks)));
+			stream.on("error", reject);
+		});
 	}
 
 	/**
