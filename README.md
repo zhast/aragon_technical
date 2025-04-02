@@ -171,4 +171,7 @@ We're following the implementation plan step by step. Current status:
    npm start
    ```
 
+   Note: The frontend is configured to run on port 3000 and the backend on port 3001.
+   If port 3000 is already in use, React will prompt you to use a different port.
+
 5. Access the application at: http://localhost:3000
