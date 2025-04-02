@@ -14,6 +14,7 @@ const rekognition = new RekognitionClient({
 export interface ValidationResult {
 	isValid: boolean;
 	reason?: string;
+	hash?: string; // Optional hash for storing in the database
 }
 
 export class ImageValidationService {
@@ -233,36 +234,52 @@ export class ImageValidationService {
 	 * @returns ValidationResult with similarity check result
 	 */
 	async validateSimilarity(buffer: Buffer): Promise<ValidationResult> {
-		// For demonstration purposes, a simple hash-based approach
-		// In production, consider using a proper perceptual hash algorithm
-		// or a cloud service like AWS Rekognition's CompareFaces
-
 		try {
-			// Generate a simple hash of the image
+			// Generate a hash of the image
 			const imageHash = await this.generateSimpleHash(buffer);
 
-			// Get hashes of recent images from database (would require a hash field in schema)
-			// This is simplified for demo purposes
-			// const recentImages = await prisma.image.findMany({
-			//   take: 20,
-			//   orderBy: {
-			//     createdAt: 'desc'
-			//   },
-			//   where: {
-			//     status: 'valid'
-			//   }
-			// });
+			// Get hashes of recent valid images from database
+			const recentImages = await prisma.image.findMany({
+				take: 20,
+				orderBy: {
+					createdAt: "desc",
+				},
+				where: {
+					status: "valid",
+					hash: {
+						not: null,
+					},
+				},
+				select: {
+					id: true,
+					hash: true,
+				},
+			});
 
-			// Check similarity (would compare hashes in real implementation)
-			// const isSimilar = recentImages.some(img =>
-			//   this.calculateHashSimilarity(imageHash, img.hash) > 0.8
-			// );
+			// Check similarity threshold (80% similarity is considered a duplicate)
+			const similarityThreshold = 0.8;
 
-			// if (isSimilar) {
-			//   return { isValid: false, reason: 'This photo looks too similar to one you already uploaded' };
-			// }
+			// Find similar images
+			const similarImages = recentImages
+				.filter((img) => img.hash !== null && img.hash !== undefined)
+				.filter(
+					(img) =>
+						this.calculateHashSimilarity(imageHash, img.hash as string) >
+						similarityThreshold
+				);
 
-			return { isValid: true };
+			if (similarImages.length > 0) {
+				return {
+					isValid: false,
+					reason: "This photo looks too similar to one you already uploaded",
+				};
+			}
+
+			// Return success with the hash
+			return {
+				isValid: true,
+				hash: imageHash,
+			};
 		} catch (error) {
 			console.error("Error checking image similarity:", error);
 			return { isValid: false, reason: "We couldn't process this image" };
@@ -270,7 +287,7 @@ export class ImageValidationService {
 	}
 
 	/**
-	 * Generate a simple hash for an image (for demo purposes)
+	 * Generate a simple hash for an image
 	 * @param buffer Image buffer
 	 * @returns Simple image hash
 	 */
@@ -296,5 +313,31 @@ export class ImageValidationService {
 			console.error("Error generating image hash:", error);
 			throw new Error("Failed to generate image hash");
 		}
+	}
+
+	/**
+	 * Calculate similarity between two image hashes using Hamming distance
+	 * @param hash1 First image hash
+	 * @param hash2 Second image hash
+	 * @returns Similarity score between 0 and 1 (1 being identical)
+	 */
+	private calculateHashSimilarity(hash1: string, hash2: string): number {
+		// Check if hashes are the same length
+		if (hash1.length !== hash2.length) {
+			console.warn("Comparing hashes of different lengths");
+			return 0;
+		}
+
+		// Calculate Hamming distance (number of positions where bits differ)
+		let hammingDistance = 0;
+		for (let i = 0; i < hash1.length; i++) {
+			if (hash1[i] !== hash2[i]) {
+				hammingDistance++;
+			}
+		}
+
+		// Convert distance to similarity score (0 to 1)
+		// 0 distance means 100% similarity, max distance means 0% similarity
+		return 1 - hammingDistance / hash1.length;
 	}
 }

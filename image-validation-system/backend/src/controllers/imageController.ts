@@ -110,6 +110,7 @@ export const uploadImage = async (
 				s3Key: s3Upload.key,
 				storageType: s3Upload.storageType,
 				status: status,
+				hash: similarityResult.hash,
 				validationErrors:
 					validationErrors.length > 0 ? validationErrors.join("; ") : null,
 			},

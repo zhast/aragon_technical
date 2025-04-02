@@ -22,6 +22,7 @@ model Image {
   width        Int?
   height       Int?
   url          String
+  hash         String?  // Perceptual hash for similarity detection
   s3Key        String?  // S3 key for file storage and retrieval
   storageType  String   @default("local") // "s3" or "local"
   status       String   @default("processing") // processing, valid, invalid
