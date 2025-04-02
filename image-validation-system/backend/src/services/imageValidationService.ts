@@ -144,6 +144,7 @@ export class ImageValidationService {
 	 */
 	async validateFaces(buffer: Buffer): Promise<ValidationResult> {
 		try {
+			console.log("Starting face detection validation...");
 			const params = {
 				Image: {
 					Bytes: buffer,
@@ -151,14 +152,22 @@ export class ImageValidationService {
 				// Using default attributes without specifying Attributes array
 			};
 
+			console.log("Sending request to AWS Rekognition...");
 			const command = new DetectFacesCommand(params);
 			const response = await rekognition.send(command);
 
+			console.log(
+				"Rekognition response received:",
+				JSON.stringify(response, null, 2)
+			);
+
 			if (!response.FaceDetails || response.FaceDetails.length === 0) {
+				console.log("No faces detected in the image");
 				return { isValid: false, reason: "No faces detected in the image" };
 			}
 
 			if (response.FaceDetails.length > 1) {
+				console.log(`Multiple faces detected: ${response.FaceDetails.length}`);
 				return {
 					isValid: false,
 					reason: `Too many faces detected: ${response.FaceDetails.length}`,
@@ -168,14 +177,19 @@ export class ImageValidationService {
 			// Check face size (using bounding box)
 			const face = response.FaceDetails[0];
 			const boundingBox = face.BoundingBox;
+			const faceSize = boundingBox
+				? (boundingBox.Width || 0) * (boundingBox.Height || 0)
+				: 0;
 
-			if (
-				boundingBox &&
-				(boundingBox.Width || 0) * (boundingBox.Height || 0) < 0.05
-			) {
+			console.log(`Face bounding box: ${JSON.stringify(boundingBox)}`);
+			console.log(`Face size proportion: ${faceSize}, threshold: 0.05`);
+
+			if (boundingBox && faceSize < 0.05) {
+				console.log("Face is too small in the image");
 				return { isValid: false, reason: "Face is too small in the image" };
 			}
 
+			console.log("Face validation passed");
 			return { isValid: true };
 		} catch (error) {
 			console.error("Error validating faces in image:", error);

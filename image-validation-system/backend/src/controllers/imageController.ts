@@ -63,13 +63,14 @@ export const uploadImage = async (
 			validationErrors.push(blurResult.reason || "Image too blurry");
 		}
 
-		// Face detection is disabled for now until we properly set up AWS credentials
-		/*
+		console.log("=== STARTING FACE DETECTION ===");
+		// Validate faces
 		const faceResult = await imageValidation.validateFaces(fileBuffer);
+		console.log("Face validation result:", faceResult);
 		if (!faceResult.isValid) {
 			validationErrors.push(faceResult.reason || "Face validation failed");
 		}
-		*/
+		console.log("=== FACE DETECTION COMPLETE ===");
 
 		// Validate similarity
 		const similarityResult = await imageValidation.validateSimilarity(
