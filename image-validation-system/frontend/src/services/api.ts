@@ -16,6 +16,8 @@ export const uploadImage = async (file: File): Promise<UploadResponse> => {
 		const formData = new FormData();
 		formData.append("image", file);
 
+		console.log("Uploading to:", API_URL);
+
 		const response = await api.post("/images/upload", formData, {
 			headers: {
 				"Content-Type": "multipart/form-data",
@@ -24,7 +26,10 @@ export const uploadImage = async (file: File): Promise<UploadResponse> => {
 
 		return { success: true, image: response.data };
 	} catch (error) {
+		console.error("Full upload error:", error);
 		if (axios.isAxiosError(error) && error.response) {
+			console.error("Response data:", error.response.data);
+			console.error("Response status:", error.response.status);
 			return {
 				success: false,
 				error: error.response.data.error || "Upload failed",

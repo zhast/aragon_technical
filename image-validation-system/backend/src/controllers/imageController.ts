@@ -102,19 +102,31 @@ export const uploadImage = async (
 				mimeType: mimeType,
 				size: req.file.size,
 				url: s3Upload.url,
-				status: status,
 				s3Key: s3Upload.key,
+				storageType: s3Upload.storageType,
+				status: status,
 				validationErrors:
 					validationErrors.length > 0 ? validationErrors.join("; ") : null,
 			},
 		});
 
+		// Log the storage type for clarity
+		console.log(`Image stored using: ${s3Upload.storageType} storage`);
+
 		res.status(201).json({
 			...image,
 			validationErrors: validationErrors,
+			storageType: s3Upload.storageType,
 		});
 	} catch (error) {
 		console.error("Error uploading image:", error);
+		// Add more detailed error logging
+		if (error instanceof Error) {
+			console.error("Error details:", error.message);
+			if ("stack" in error) {
+				console.error("Stack trace:", error.stack);
+			}
+		}
 		res.status(500).json({ error: "Failed to upload image" });
 	}
 };

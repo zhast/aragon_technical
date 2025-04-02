@@ -23,6 +23,7 @@ model Image {
   height       Int?
   url          String
   s3Key        String?  // S3 key for file storage and retrieval
+  storageType  String   @default("local") // "s3" or "local"
   status       String   @default("processing") // processing, valid, invalid
   validationErrors String?  // Semicolon-separated list of validation errors
   createdAt    DateTime @default(now())

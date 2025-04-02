@@ -7,6 +7,7 @@ export interface Image {
 	url: string;
 	status: "valid" | "invalid" | "processing";
 	s3Key: string;
+	storageType?: "s3" | "local";
 	createdAt: string;
 	updatedAt: string;
 }

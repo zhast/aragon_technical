@@ -77,6 +77,11 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 								<p className={`image-status status-${image.status}`}>
 									Status: {image.status}
 								</p>
+								{image.storageType && (
+									<p className={`image-storage storage-${image.storageType}`}>
+										Storage: {image.storageType === "s3" ? "S3 Cloud" : "Local"}
+									</p>
+								)}
 							</div>
 							<button
 								className="delete-button"
