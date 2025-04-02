@@ -109,4 +109,4 @@ This project implements a system for uploading, validating, and categorizing ima
 
 We're following the implementation plan step by step. Current status:
 
-- Setting up project structure and beginning implementation
+- Setting up project structure and beginning implementation.
