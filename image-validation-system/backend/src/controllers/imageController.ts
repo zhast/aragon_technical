@@ -92,24 +92,11 @@ export const uploadImage = async (
 		// Determine final status
 		if (validationErrors.length > 0) {
 			status = "invalid";
-
-			// If validation failed, respond immediately without uploading to S3
-			const errorMessage = validationErrors.join("; ");
-
-			// Return detailed validation information to the client
-			res.status(400).json({
-				success: false,
-				status: "invalid",
-				error: "Image validation failed",
-				validationErrors: validationErrors,
-				details: errorMessage,
-			});
-			return;
 		} else {
 			status = "valid";
 		}
 
-		// Only upload valid images to S3
+		// Upload all images to S3, even invalid ones
 		const s3Upload = await s3Service.uploadFile(fileBuffer, originalFileName);
 
 		// Store image metadata in database
@@ -123,19 +110,31 @@ export const uploadImage = async (
 				s3Key: s3Upload.key,
 				storageType: s3Upload.storageType,
 				status: status,
-				validationErrors: null, // Valid images have no errors
+				validationErrors:
+					validationErrors.length > 0 ? validationErrors.join("; ") : null,
 			},
 		});
 
 		// Log the storage type for clarity
 		console.log(`Image stored using: ${s3Upload.storageType} storage`);
 
-		res.status(201).json({
-			success: true,
-			...image,
-			validationErrors: null,
-			storageType: s3Upload.storageType,
-		});
+		if (status === "invalid") {
+			// Return validation error information but with success=true since we still uploaded the image
+			res.status(200).json({
+				success: true,
+				...image,
+				validationErrors: validationErrors,
+				storageType: s3Upload.storageType,
+				status: "invalid",
+			});
+		} else {
+			res.status(201).json({
+				success: true,
+				...image,
+				validationErrors: null,
+				storageType: s3Upload.storageType,
+			});
+		}
 	} catch (error) {
 		console.error("Error uploading image:", error);
 		// Add more detailed error logging

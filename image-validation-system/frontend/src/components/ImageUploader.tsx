@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 interface ImageUploaderProps {
 	onImageUploaded: () => void;
-	onUploadFailed: (failedFile: FileWithStatus) => void;
+	onUploadFailed: (failedFile: FileWithStatus, response: any) => void;
 }
 
 type UploadStatus = "pending" | "uploading" | "success" | "error";
@@ -103,20 +103,52 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 			const response = await uploadImage(files[fileIndex]);
 
 			if (response.success) {
-				// Update status to success
-				updatedFiles[fileIndex].status = "success";
-				setFiles(updatedFiles);
-				toast.success(`${files[fileIndex].name} uploaded successfully`);
-				onImageUploaded();
+				if (
+					response.status === "invalid" ||
+					(response.validationErrors && response.validationErrors.length > 0)
+				) {
+					// Image was uploaded but has validation errors
+					updatedFiles[fileIndex].status = "error";
+
+					// Set a more descriptive error message by using the first validation error
+					updatedFiles[fileIndex].errorMessage =
+						response.validationErrors && response.validationErrors.length > 0
+							? response.validationErrors[0] // Use the first validation error as the message
+							: "Failed validation checks";
+
+					setFiles(updatedFiles);
+
+					// Notify parent component about the failed validation (but successful upload)
+					onUploadFailed(updatedFiles[fileIndex], response);
+
+					// Display validation errors as toasts
+					if (
+						response.validationErrors &&
+						response.validationErrors.length > 0
+					) {
+						response.validationErrors.forEach((error) => {
+							toast.error(`Validation failed: ${error}`, {
+								autoClose: 8000,
+								closeOnClick: false,
+							});
+						});
+					}
+				} else {
+					// Fully successful upload with no validation errors
+					updatedFiles[fileIndex].status = "success";
+					setFiles(updatedFiles);
+					toast.success(`${files[fileIndex].name} uploaded successfully`);
+					onImageUploaded();
+				}
 			} else {
-				// Update status to error and store error message
+				// HTTP error or other upload failure
 				updatedFiles[fileIndex].status = "error";
 				updatedFiles[fileIndex].errorMessage =
 					response.error || "Upload failed";
 				setFiles(updatedFiles);
 
 				// Notify parent component about the failed upload
-				onUploadFailed(updatedFiles[fileIndex]);
+				onUploadFailed(updatedFiles[fileIndex], response);
 
 				// Show the main error message
 				toast.error(response.error || "Upload failed");
@@ -125,7 +157,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 				if (response.validationErrors && response.validationErrors.length > 0) {
 					response.validationErrors.forEach((error) => {
 						toast.error(`Validation failed: ${error}`, {
-							autoClose: 8000, // Stay open longer for validation errors
+							autoClose: 8000,
 							closeOnClick: false,
 						});
 					});
@@ -138,7 +170,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 			setFiles(updatedFiles);
 
 			// Notify parent component about the failed upload
-			onUploadFailed(updatedFiles[fileIndex]);
+			onUploadFailed(updatedFiles[fileIndex], null);
 
 			toast.error("Error uploading image");
 			console.error("Upload error:", error);

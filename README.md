@@ -130,7 +130,8 @@ The project has progressed through the implementation plan with the following co
 - Upgraded AWS SDK from v2 to v3 for improved performance and modern features
 - Fixed S3 bucket configuration and permissions for public image access
 - Implemented face detection using AWS Rekognition to reject images with too small faces or multiple faces
-- Enhanced validation workflow to prevent S3 uploads for invalid images
+- Enhanced validation workflow with detailed error reporting for invalid images
+- Updated S3 upload process to include invalid images, enabling thumbnail display
 - Improved error reporting to display specific validation failures to users
 
 ## HEIC Support Implementation
@@ -205,10 +206,22 @@ The system performs several validation checks on uploaded images:
 The system follows a streamlined validation process:
 
 1. **Early Validation Feedback**: The system validates images immediately and provides specific error messages for each failed check
-2. **Storage Optimization**: Images that fail validation are not uploaded to S3, saving storage costs and bandwidth
+2. **Storage Optimization**: Images that fail validation are still uploaded to S3 to display thumbnails for rejected images
 3. **Detailed Error Reporting**: Users receive detailed feedback about why their image was rejected
 4. **Frontend Notifications**: Each validation error is displayed clearly through toast notifications
-5. **No Database Entries for Invalid Images**: The system doesn't store metadata for invalid images in the database
+5. **Database Tracking**: The system stores validation error details in the database for all images
+
+### User-Friendly Error Messages
+
+The system provides clear, user-friendly error messages when images fail validation:
+
+- "Photo is too blurry - please upload a clearer image"
+- "No face detected in photo"
+- "Multiple faces detected - please use a photo with just one person"
+- "Face is too small - please use a closer photo"
+- "Image is too small - please upload a larger photo"
+
+These human-readable messages help users understand exactly why their photo didn't meet the guidelines and what they can do to fix the issue.
 
 ## Running the Project
 
@@ -227,7 +240,7 @@ The system follows a streamlined validation process:
      - Go to your S3 bucket in the AWS Console
      - Under Permissions, uncheck "Block all public access"
      - Add the following bucket policy (replace BUCKET_NAME with your bucket name):
-     ```json
+     ```
      {
      	"Version": "2012-10-17",
      	"Statement": [

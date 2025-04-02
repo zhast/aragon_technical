@@ -23,7 +23,10 @@ function App() {
 		setRefreshGallery((prev) => prev + 1);
 	};
 
-	const handleUploadFailed = (failedFile: FileWithStatus) => {
+	const handleUploadFailed = (
+		failedFile: FileWithStatus,
+		responseData?: any
+	) => {
 		// Add failed file to the failed uploads list
 		setFailedUploads((prevFailed) => {
 			// Check if this file is already in the failed uploads
@@ -31,14 +34,22 @@ function App() {
 				(f) => f.name === failedFile.name && f.size === failedFile.size
 			);
 
+			// Create a copy of the failed file
+			const updatedFailedFile = { ...failedFile };
+
+			// If we have image data from the server with a URL, use that instead of the local preview
+			if (responseData && responseData.image && responseData.image.url) {
+				updatedFailedFile.preview = responseData.image.url;
+			}
+
 			if (existingIndex >= 0) {
 				// Replace the existing entry
 				const newList = [...prevFailed];
-				newList[existingIndex] = failedFile;
+				newList[existingIndex] = updatedFailedFile;
 				return newList;
 			} else {
 				// Add as a new entry
-				return [...prevFailed, failedFile];
+				return [...prevFailed, updatedFailedFile];
 			}
 		});
 	};
@@ -46,8 +57,11 @@ function App() {
 	const handleRemoveFailedUpload = (index: number) => {
 		setFailedUploads((prevFailed) => {
 			const newList = [...prevFailed];
-			// Release the object URL to prevent memory leaks
-			URL.revokeObjectURL(newList[index].preview);
+			// Only revoke object URL if it's a blob URL (created by URL.createObjectURL)
+			// S3 URLs should not be revoked
+			if (newList[index].preview.startsWith("blob:")) {
+				URL.revokeObjectURL(newList[index].preview);
+			}
 			newList.splice(index, 1);
 			return newList;
 		});
@@ -79,12 +93,8 @@ function App() {
 									{failedUploads.map((file, index) => (
 										<div key={index} className="failed-photo-item">
 											<div className="failed-photo-card">
-												<img src={file.preview} alt={file.name} />
+												<img src={file.preview} alt="Failed upload" />
 												<div className="failed-photo-info">
-													<p className="failed-photo-name">{file.name}</p>
-													<p className="failed-photo-size">
-														({Math.round(file.size / 1024)} KB)
-													</p>
 													<p className="failed-photo-error">
 														{file.errorMessage}
 													</p>

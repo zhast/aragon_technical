@@ -24,7 +24,14 @@ export const uploadImage = async (file: File): Promise<UploadResponse> => {
 			},
 		});
 
-		return { success: true, image: response.data };
+		// Handle both valid and invalid images that were successfully uploaded
+		const data = response.data;
+		return {
+			success: true,
+			image: data,
+			validationErrors: data.validationErrors || [],
+			status: data.status,
+		};
 	} catch (error) {
 		console.error("Full upload error:", error);
 		if (axios.isAxiosError(error) && error.response) {

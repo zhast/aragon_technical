@@ -31,21 +31,21 @@ export class ImageValidationService {
 			if (!metadata.width || !metadata.height) {
 				return {
 					isValid: false,
-					reason: "Could not determine image dimensions",
+					reason: "We couldn't process this image",
 				};
 			}
 
 			if (metadata.width < minWidth || metadata.height < minHeight) {
 				return {
 					isValid: false,
-					reason: `Image resolution too small. Minimum dimensions: ${minWidth}x${minHeight}, got: ${metadata.width}x${metadata.height}`,
+					reason: "Image is too small - please upload a larger photo",
 				};
 			}
 
 			return { isValid: true };
 		} catch (error) {
 			console.error("Error validating image resolution:", error);
-			return { isValid: false, reason: "Failed to validate image resolution" };
+			return { isValid: false, reason: "We couldn't process this image" };
 		}
 	}
 
@@ -77,16 +77,14 @@ export class ImageValidationService {
 			if (laplacian < blurThreshold) {
 				return {
 					isValid: false,
-					reason: `Image is too blurry. Sharpness score: ${laplacian.toFixed(
-						2
-					)}, minimum: ${blurThreshold}`,
+					reason: "Photo is too blurry - please upload a clearer image",
 				};
 			}
 
 			return { isValid: true };
 		} catch (error) {
 			console.error("Error validating image blur:", error);
-			return { isValid: false, reason: "Failed to validate image blur" };
+			return { isValid: false, reason: "We couldn't process this image" };
 		}
 	}
 
@@ -163,14 +161,15 @@ export class ImageValidationService {
 
 			if (!response.FaceDetails || response.FaceDetails.length === 0) {
 				console.log("No faces detected in the image");
-				return { isValid: false, reason: "No faces detected in the image" };
+				return { isValid: false, reason: "No face detected in photo" };
 			}
 
 			if (response.FaceDetails.length > 1) {
 				console.log(`Multiple faces detected: ${response.FaceDetails.length}`);
 				return {
 					isValid: false,
-					reason: `Too many faces detected: ${response.FaceDetails.length}`,
+					reason:
+						"Multiple faces detected - please use a photo with just one person",
 				};
 			}
 
@@ -186,14 +185,20 @@ export class ImageValidationService {
 
 			if (boundingBox && faceSize < 0.05) {
 				console.log("Face is too small in the image");
-				return { isValid: false, reason: "Face is too small in the image" };
+				return {
+					isValid: false,
+					reason: "Face is too small - please use a closer photo",
+				};
 			}
 
 			console.log("Face validation passed");
 			return { isValid: true };
 		} catch (error) {
 			console.error("Error validating faces in image:", error);
-			return { isValid: false, reason: "Failed to validate faces in image" };
+			return {
+				isValid: false,
+				reason: "We couldn't analyze faces in the image",
+			};
 		}
 	}
 
@@ -254,13 +259,13 @@ export class ImageValidationService {
 			// );
 
 			// if (isSimilar) {
-			//   return { isValid: false, reason: 'Image too similar to an existing one' };
+			//   return { isValid: false, reason: 'This photo looks too similar to one you already uploaded' };
 			// }
 
 			return { isValid: true };
 		} catch (error) {
 			console.error("Error checking image similarity:", error);
-			return { isValid: false, reason: "Failed to check image similarity" };
+			return { isValid: false, reason: "We couldn't process this image" };
 		}
 	}
 
