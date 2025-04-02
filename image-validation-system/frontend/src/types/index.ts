@@ -20,4 +20,7 @@ export interface UploadResponse {
 	success: boolean;
 	image?: Image;
 	error?: string;
+	validationErrors?: string[];
+	details?: string;
+	status?: "valid" | "invalid" | "processing";
 }

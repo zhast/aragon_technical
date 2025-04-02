@@ -92,15 +92,25 @@ export const uploadImage = async (
 		// Determine final status
 		if (validationErrors.length > 0) {
 			status = "invalid";
+
+			// If validation failed, respond immediately without uploading to S3
+			const errorMessage = validationErrors.join("; ");
+
+			// Return detailed validation information to the client
+			res.status(400).json({
+				success: false,
+				status: "invalid",
+				error: "Image validation failed",
+				validationErrors: validationErrors,
+				details: errorMessage,
+			});
+			return;
 		} else {
 			status = "valid";
 		}
 
-		// Upload file to S3
-		const s3Upload = await s3Service.uploadFile(
-			fileBuffer,
-			status === "valid" ? originalFileName : `invalid_${originalFileName}`
-		);
+		// Only upload valid images to S3
+		const s3Upload = await s3Service.uploadFile(fileBuffer, originalFileName);
 
 		// Store image metadata in database
 		const image = await prisma.image.create({
@@ -113,8 +123,7 @@ export const uploadImage = async (
 				s3Key: s3Upload.key,
 				storageType: s3Upload.storageType,
 				status: status,
-				validationErrors:
-					validationErrors.length > 0 ? validationErrors.join("; ") : null,
+				validationErrors: null, // Valid images have no errors
 			},
 		});
 
@@ -122,8 +131,9 @@ export const uploadImage = async (
 		console.log(`Image stored using: ${s3Upload.storageType} storage`);
 
 		res.status(201).json({
+			success: true,
 			...image,
-			validationErrors: validationErrors,
+			validationErrors: null,
 			storageType: s3Upload.storageType,
 		});
 	} catch (error) {
@@ -135,7 +145,11 @@ export const uploadImage = async (
 				console.error("Stack trace:", error.stack);
 			}
 		}
-		res.status(500).json({ error: "Failed to upload image" });
+		res.status(500).json({
+			success: false,
+			error: "Failed to upload image",
+			details: error instanceof Error ? error.message : "Unknown error",
+		});
 	}
 };
 

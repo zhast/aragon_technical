@@ -130,6 +130,8 @@ The project has progressed through the implementation plan with the following co
 - Upgraded AWS SDK from v2 to v3 for improved performance and modern features
 - Fixed S3 bucket configuration and permissions for public image access
 - Implemented face detection using AWS Rekognition to reject images with too small faces or multiple faces
+- Enhanced validation workflow to prevent S3 uploads for invalid images
+- Improved error reporting to display specific validation failures to users
 
 ## HEIC Support Implementation
 
@@ -197,6 +199,16 @@ The system performs several validation checks on uploaded images:
 - Rejects images with multiple faces (requires exactly one face)
 - Rejects images where the face is too small (face area < 5% of image area)
 - Face size is calculated using the bounding box coordinates returned by Rekognition
+
+### Validation Workflow
+
+The system follows a streamlined validation process:
+
+1. **Early Validation Feedback**: The system validates images immediately and provides specific error messages for each failed check
+2. **Storage Optimization**: Images that fail validation are not uploaded to S3, saving storage costs and bandwidth
+3. **Detailed Error Reporting**: Users receive detailed feedback about why their image was rejected
+4. **Frontend Notifications**: Each validation error is displayed clearly through toast notifications
+5. **No Database Entries for Invalid Images**: The system doesn't store metadata for invalid images in the database
 
 ## Running the Project
 

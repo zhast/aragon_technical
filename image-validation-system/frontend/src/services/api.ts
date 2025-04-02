@@ -30,9 +30,15 @@ export const uploadImage = async (file: File): Promise<UploadResponse> => {
 		if (axios.isAxiosError(error) && error.response) {
 			console.error("Response data:", error.response.data);
 			console.error("Response status:", error.response.status);
+
+			// Return detailed validation errors if available
+			const responseData = error.response.data;
 			return {
 				success: false,
-				error: error.response.data.error || "Upload failed",
+				error: responseData.error || "Upload failed",
+				validationErrors: responseData.validationErrors || [],
+				details: responseData.details || undefined,
+				status: responseData.status,
 			};
 		}
 		return { success: false, error: "Upload failed" };

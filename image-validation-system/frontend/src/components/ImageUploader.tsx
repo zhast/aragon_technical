@@ -82,7 +82,23 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 				setFiles([]);
 				onImageUploaded();
 			} else {
+				// Show the main error message
 				toast.error(response.error || "Upload failed");
+
+				// If there are validation errors, show them in a more detailed manner
+				if (response.validationErrors && response.validationErrors.length > 0) {
+					response.validationErrors.forEach((error) => {
+						toast.error(`Validation failed: ${error}`, {
+							autoClose: 8000, // Stay open longer for validation errors
+							closeOnClick: false,
+						});
+					});
+				}
+
+				// If there's a detailed message, log it to console
+				if (response.details) {
+					console.error("Detailed error:", response.details);
+				}
 			}
 		} catch (error) {
 			toast.error("Error uploading image");
