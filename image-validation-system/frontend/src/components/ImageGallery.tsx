@@ -64,7 +64,6 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
 	return (
 		<div className="image-gallery">
-			<h2>Uploaded Images</h2>
 			<div className="gallery-grid">
 				{images.map((image) => (
 					<div key={image.id} className="gallery-item">

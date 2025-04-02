@@ -6,23 +6,44 @@ import { toast } from "react-toastify";
 
 interface ImageUploaderProps {
 	onImageUploaded: () => void;
+	onUploadFailed: (failedFile: FileWithStatus) => void;
+}
+
+type UploadStatus = "pending" | "uploading" | "success" | "error";
+
+interface FileWithStatus extends FileWithPreview {
+	status: UploadStatus;
+	errorMessage?: string;
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
 	onImageUploaded,
+	onUploadFailed,
 }) => {
-	const [files, setFiles] = useState<FileWithPreview[]>([]);
-	const [uploading, setUploading] = useState(false);
+	const [files, setFiles] = useState<FileWithStatus[]>([]);
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
-		// Add preview to each file
-		const filesWithPreview = acceptedFiles.map((file) =>
+		// Add preview and status to each file
+		const filesWithStatus = acceptedFiles.map((file) =>
 			Object.assign(file, {
 				preview: URL.createObjectURL(file),
+				status: "pending" as UploadStatus,
 			})
 		);
-		setFiles(filesWithPreview);
+
+		// Set the files first, then handle upload in a separate effect
+		setFiles((prevFiles) => [...prevFiles, ...filesWithStatus]);
 	}, []);
+
+	// Effect to handle auto-upload of new pending files
+	useEffect(() => {
+		// Find files that are still in pending status and upload them
+		files.forEach((file, index) => {
+			if (file.status === "pending") {
+				handleUpload(index);
+			}
+		});
+	}, [files.length]); // Only trigger when the number of files changes
 
 	// Validate file types (JPG, PNG, HEIC)
 	const validateFileType = (file: File) => {
@@ -42,7 +63,6 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 	const { getRootProps, getInputProps, isDragActive, fileRejections } =
 		useDropzone({
 			onDrop,
-			maxFiles: 1,
 			accept: {
 				"image/jpeg": [".jpg", ".jpeg"],
 				"image/png": [".png"],
@@ -67,21 +87,37 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 		};
 	}, [files]);
 
-	const handleUpload = async () => {
-		if (files.length === 0) {
-			toast.warn("Please select a file to upload");
+	const handleUpload = async (fileIndex: number) => {
+		// Ensure the file exists at this index
+		if (!files[fileIndex]) {
+			console.error(`No file found at index ${fileIndex}`);
 			return;
 		}
 
-		setUploading(true);
+		// Update the status of the file being uploaded
+		const updatedFiles = [...files];
+		updatedFiles[fileIndex].status = "uploading";
+		setFiles(updatedFiles);
+
 		try {
-			const response = await uploadImage(files[0]);
+			const response = await uploadImage(files[fileIndex]);
 
 			if (response.success) {
-				toast.success("Image uploaded successfully");
-				setFiles([]);
+				// Update status to success
+				updatedFiles[fileIndex].status = "success";
+				setFiles(updatedFiles);
+				toast.success(`${files[fileIndex].name} uploaded successfully`);
 				onImageUploaded();
 			} else {
+				// Update status to error and store error message
+				updatedFiles[fileIndex].status = "error";
+				updatedFiles[fileIndex].errorMessage =
+					response.error || "Upload failed";
+				setFiles(updatedFiles);
+
+				// Notify parent component about the failed upload
+				onUploadFailed(updatedFiles[fileIndex]);
+
 				// Show the main error message
 				toast.error(response.error || "Upload failed");
 
@@ -94,51 +130,112 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 						});
 					});
 				}
-
-				// If there's a detailed message, log it to console
-				if (response.details) {
-					console.error("Detailed error:", response.details);
-				}
 			}
 		} catch (error) {
+			// Update status to error
+			updatedFiles[fileIndex].status = "error";
+			updatedFiles[fileIndex].errorMessage = "Error uploading image";
+			setFiles(updatedFiles);
+
+			// Notify parent component about the failed upload
+			onUploadFailed(updatedFiles[fileIndex]);
+
 			toast.error("Error uploading image");
 			console.error("Upload error:", error);
-		} finally {
-			setUploading(false);
 		}
+	};
+
+	const handleRemoveFile = (index: number) => {
+		const updatedFiles = [...files];
+		// Revoke the object URL to avoid memory leaks
+		URL.revokeObjectURL(updatedFiles[index].preview);
+		updatedFiles.splice(index, 1);
+		setFiles(updatedFiles);
+	};
+
+	const getStatusIcon = (status: UploadStatus) => {
+		switch (status) {
+			case "pending":
+				return "⏳";
+			case "uploading":
+				return "⌛";
+			case "success":
+				return "✅";
+			case "error":
+				return "❌";
+			default:
+				return "⏳";
+		}
+	};
+
+	const handleClearSuccessful = () => {
+		// Keep only files with error status and revoke others
+		const filesToKeep = files.filter((file) => {
+			if (file.status !== "error") {
+				URL.revokeObjectURL(file.preview);
+				return false;
+			}
+			return true;
+		});
+		setFiles(filesToKeep);
 	};
 
 	return (
 		<div className="image-uploader">
-			<div
-				{...getRootProps()}
-				className={`dropzone ${isDragActive ? "active" : ""}`}
-			>
-				<input {...getInputProps()} />
-				{isDragActive ? (
-					<p>Drop the image here...</p>
-				) : (
-					<p>Drag and drop an image here, or click to select</p>
+			<div className="sidebar-uploader">
+				<div
+					{...getRootProps()}
+					className={`dropzone ${isDragActive ? "active" : ""}`}
+				>
+					<input {...getInputProps()} />
+					{isDragActive ? (
+						<p>Drop the images here...</p>
+					) : (
+						<p>Drag and drop images here, or click to select</p>
+					)}
+				</div>
+
+				{files.length > 0 && (
+					<>
+						<div className="file-list">
+							{files.map((file, index) => (
+								<div key={index} className={`file-item status-${file.status}`}>
+									<span className="status-icon">
+										{getStatusIcon(file.status)}
+									</span>
+									<span className="file-name">{file.name}</span>
+									<span className="file-size">
+										({Math.round(file.size / 1024)} KB)
+									</span>
+									{file.status === "error" && (
+										<button
+											onClick={() => handleUpload(index)}
+											className="retry-button small"
+										>
+											Retry
+										</button>
+									)}
+									<button
+										onClick={() => handleRemoveFile(index)}
+										className="remove-button"
+										aria-label="Remove file"
+									>
+										×
+									</button>
+								</div>
+							))}
+						</div>
+						<div className="upload-actions">
+							<button onClick={handleClearSuccessful} className="clear-button">
+								Clear Successful
+							</button>
+							<button onClick={() => setFiles([])} className="clear-button">
+								Clear All
+							</button>
+						</div>
+					</>
 				)}
 			</div>
-
-			{files.length > 0 && (
-				<div className="preview-container">
-					<div className="image-preview">
-						<img src={files[0].preview} alt="Preview" />
-						<p>
-							{files[0].name} ({Math.round(files[0].size / 1024)} KB)
-						</p>
-					</div>
-					<button
-						onClick={handleUpload}
-						disabled={uploading}
-						className="upload-button"
-					>
-						{uploading ? "Uploading..." : "Upload Image"}
-					</button>
-				</div>
-			)}
 		</div>
 	);
 };
