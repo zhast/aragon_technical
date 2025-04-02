@@ -22,6 +22,7 @@ model Image {
   width        Int?
   height       Int?
   url          String
+  s3Key        String?  // S3 key for file storage and retrieval
   status       String   @default("processing") // processing, valid, invalid
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
