@@ -45,13 +45,14 @@
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  min-height: 0;
 }
 
 /* Layout */
 .app-layout {
   display: flex;
   gap: 2rem;
-  height: 100%;
+  align-items: flex-start;
 }
 
 .sidebar-section {
@@ -61,8 +62,6 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1.5rem;
-  height: calc(100vh - 150px);
-  overflow-y: auto;
 }
 
 .main-content {
@@ -70,8 +69,6 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  max-height: calc(100vh - 150px);
-  overflow-y: auto;
 }
 
 .gallery-section {
@@ -80,8 +77,6 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1.5rem;
-  min-height: 300px;
-  overflow-y: auto;
 }
 
 .failed-uploads-section {
@@ -98,91 +93,15 @@
   font-size: 1.2rem;
 }
 
-.failed-photos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.failed-photo-item {
-  break-inside: avoid;
-}
-
-.failed-photo-card {
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 1px solid #ffebee;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.failed-photo-card img {
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-}
-
-.failed-photo-info {
-  padding: 0.75rem;
-  text-align: left;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.failed-photo-name {
-  font-weight: bold;
-  margin: 0 0 0.25rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.9rem;
-}
-
-.failed-photo-size {
-  margin: 0.25rem 0;
-  color: #666;
-  font-size: 0.8rem;
-}
-
-.failed-photo-error {
-  margin: 0;
-  color: #d32f2f;
-  font-size: 0.95rem;
-  font-weight: 500;
-  text-align: center;
-}
-
-.remove-failed-button {
-  width: 100%;
-  padding: 0.5rem;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  font-size: 0.9rem;
-}
-
-.remove-failed-button:hover {
-  background-color: #d32f2f;
-}
-
 /* Image Uploader Styles */
 .image-uploader {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .sidebar-uploader {
   display: flex;
   flex-direction: column;
-  height: 100%;
   gap: 1rem;
 }
 
@@ -203,8 +122,6 @@
 }
 
 .file-list {
-  flex: 1;
-  overflow-y: auto;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -350,10 +267,65 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1.5rem;
+  width: 100%;
 }
 
 .gallery-item {
   break-inside: avoid;
+}
+
+/* Section styling for accepted and rejected images */
+.accepted-images, .rejected-images {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.accepted-images {
+  background-color: rgba(232, 245, 233, 0.2);
+  border-left: 4px solid #4caf50;
+}
+
+.rejected-images {
+  background-color: rgba(255, 235, 238, 0.2);
+  border-left: 4px solid #f44336;
+}
+
+.accepted-images h2, .rejected-images h2 {
+  margin-top: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.accepted-images .image-card {
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.rejected-images .image-card {
+  border-color: rgba(244, 67, 54, 0.5);
+}
+
+/* Section heading styles */
+.section-divider {
+  margin: 1.5rem 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* Status indicator styles */
+.status-valid {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.status-invalid {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.status-processing {
+  color: #2196f3;
+  font-weight: bold;
 }
 
 .image-card {
@@ -395,26 +367,36 @@
 }
 
 .image-status {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
   display: inline-block;
-  margin-top: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
   font-size: 0.9rem;
+  margin-top: 0.5rem;
 }
 
-.status-valid {
+.image-status.status-valid {
   background-color: #e8f5e9;
   color: #2e7d32;
 }
 
-.status-invalid {
+.image-status.status-invalid {
   background-color: #ffebee;
   color: #c62828;
 }
 
-.status-processing {
+.image-status.status-processing {
   background-color: #e3f2fd;
   color: #1565c0;
+}
+
+/* Rejection reason display */
+.rejection-reason {
+  margin: 0.5rem 0;
+  color: #d32f2f;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.25rem 0;
+  border-top: 1px solid rgba(244, 67, 54, 0.2);
 }
 
 /* Storage type indicators */

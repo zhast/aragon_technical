@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ImageUploader } from "./components/ImageUploader";
 import { ImageGallery } from "./components/ImageGallery";
 import { ToastContainer } from "react-toastify";
+import { getAllImages, deleteImage } from "./services/api";
+import { Image } from "./types";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
 
@@ -17,11 +20,34 @@ interface FileWithStatus {
 function App() {
 	const [refreshGallery, setRefreshGallery] = useState(0);
 	const [failedUploads, setFailedUploads] = useState<FileWithStatus[]>([]);
+	const [invalidImages, setInvalidImages] = useState<Image[]>([]);
+	const [loadingInvalid, setLoadingInvalid] = useState(true);
 
 	const handleImageUploaded = () => {
 		// Trigger gallery refresh
 		setRefreshGallery((prev) => prev + 1);
+		// Also fetch invalid images again when an image is uploaded
+		fetchInvalidImages();
 	};
+
+	// Fetch invalid images from the database
+	const fetchInvalidImages = async () => {
+		setLoadingInvalid(true);
+		try {
+			const allImages = await getAllImages();
+			const invalid = allImages.filter((img) => img.status === "invalid");
+			setInvalidImages(invalid);
+		} catch (err) {
+			console.error("Error fetching invalid images:", err);
+		} finally {
+			setLoadingInvalid(false);
+		}
+	};
+
+	// Fetch invalid images on mount and when refreshGallery changes
+	useEffect(() => {
+		fetchInvalidImages();
+	}, [refreshGallery]);
 
 	const handleUploadFailed = (
 		failedFile: FileWithStatus,
@@ -52,6 +78,9 @@ function App() {
 				return [...prevFailed, updatedFailedFile];
 			}
 		});
+
+		// Also refresh the gallery to get updated invalid images
+		fetchInvalidImages();
 	};
 
 	const handleRemoveFailedUpload = (index: number) => {
@@ -67,6 +96,28 @@ function App() {
 		});
 	};
 
+	// Add a handler for deleting invalid images
+	const handleDeleteInvalidImage = async (id: string) => {
+		if (window.confirm("Are you sure you want to delete this image?")) {
+			try {
+				const success = await deleteImage(id);
+				if (success) {
+					setInvalidImages(invalidImages.filter((image) => image.id !== id));
+					toast.success("Image deleted successfully");
+				} else {
+					toast.error("Failed to delete image");
+				}
+			} catch (error) {
+				console.error("Error deleting image:", error);
+				toast.error("Error deleting image");
+			}
+		}
+	};
+
+	// Determine if we should show the rejected photos section
+	const hasRejectedPhotos =
+		invalidImages.length > 0 || failedUploads.length > 0;
+
 	return (
 		<div className="App">
 			<header className="App-header">
@@ -81,34 +132,108 @@ function App() {
 						/>
 					</section>
 					<div className="main-content">
-						<section className="gallery-section">
-							<h2>Uploaded Images</h2>
-							<ImageGallery refreshTrigger={refreshGallery} />
+						<section className="gallery-section accepted-images">
+							<ImageGallery
+								refreshTrigger={refreshGallery}
+								statusFilter="valid"
+								title="Accepted Photos"
+							/>
 						</section>
 
-						{failedUploads.length > 0 && (
-							<section className="failed-uploads-section">
-								<h2>Some Photos Didn't Meet Our Guidelines</h2>
-								<div className="failed-photos-grid">
-									{failedUploads.map((file, index) => (
-										<div key={index} className="failed-photo-item">
-											<div className="failed-photo-card">
-												<img src={file.preview} alt="Failed upload" />
-												<div className="failed-photo-info">
-													<p className="failed-photo-error">
-														{file.errorMessage}
-													</p>
+						{hasRejectedPhotos && (
+							<section className="gallery-section rejected-images">
+								<h2>Photos That Didn't Meet Our Guidelines</h2>
+
+								{/* Render failed uploads from the current session */}
+								{failedUploads.length > 0 && (
+									<div className="gallery-grid">
+										{failedUploads.map((file, index) => (
+											<div key={`failed-${index}`} className="gallery-item">
+												<div className="image-card">
+													<img src={file.preview} alt="Failed upload" />
+													<div className="image-info">
+														<p className="image-name">{file.name}</p>
+														<p className="image-size">
+															{Math.round(file.size / 1024)} KB
+														</p>
+														<p className="image-status status-invalid">
+															Status: invalid
+														</p>
+														{file.errorMessage && (
+															<p className="rejection-reason">
+																{file.errorMessage}
+															</p>
+														)}
+													</div>
+													<button
+														className="delete-button"
+														onClick={() => handleRemoveFailedUpload(index)}
+														aria-label="Remove file"
+													>
+														Delete
+													</button>
 												</div>
-												<button
-													className="remove-failed-button"
-													onClick={() => handleRemoveFailedUpload(index)}
-												>
-													Remove
-												</button>
 											</div>
-										</div>
-									))}
-								</div>
+										))}
+									</div>
+								)}
+
+								{/* Add a divider if both sections have content */}
+								{failedUploads.length > 0 && invalidImages.length > 0 && (
+									<div className="section-divider"></div>
+								)}
+
+								{/* Render invalid images from the database */}
+								{invalidImages.length > 0 && (
+									<div className="gallery-grid">
+										{invalidImages.map((image) => (
+											<div key={`invalid-${image.id}`} className="gallery-item">
+												<div className="image-card">
+													<img
+														src={image.url}
+														alt={image.originalName}
+														onError={(e) => {
+															e.currentTarget.src =
+																"https://via.placeholder.com/400x300?text=Image+Load+Error";
+														}}
+													/>
+													<div className="image-info">
+														<p className="image-name">{image.originalName}</p>
+														<p className="image-size">
+															{Math.round(image.size / 1024)} KB
+														</p>
+														<p className="image-type">{image.mimeType}</p>
+														<p className="image-status status-invalid">
+															Status: invalid
+														</p>
+														{image.validationErrors && (
+															<p className="rejection-reason">
+																{image.validationErrors.split(";")[0]}
+															</p>
+														)}
+														{image.storageType && (
+															<p
+																className={`image-storage storage-${image.storageType}`}
+															>
+																Storage:{" "}
+																{image.storageType === "s3"
+																	? "S3 Cloud"
+																	: "Local"}
+															</p>
+														)}
+													</div>
+													<button
+														className="delete-button"
+														onClick={() => handleDeleteInvalidImage(image.id)}
+														aria-label="Delete image"
+													>
+														Delete
+													</button>
+												</div>
+											</div>
+										))}
+									</div>
+								)}
 							</section>
 						)}
 					</div>

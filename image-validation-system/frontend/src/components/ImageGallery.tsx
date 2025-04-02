@@ -5,12 +5,17 @@ import { toast } from "react-toastify";
 
 interface ImageGalleryProps {
 	refreshTrigger: number;
+	statusFilter?: "valid" | "invalid" | "all";
+	title?: string;
 }
 
 export const ImageGallery: React.FC<ImageGalleryProps> = ({
 	refreshTrigger,
+	statusFilter = "all",
+	title = "Images",
 }) => {
 	const [images, setImages] = useState<Image[]>([]);
+	const [filteredImages, setFilteredImages] = useState<Image[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +37,17 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 	useEffect(() => {
 		fetchImages();
 	}, [refreshTrigger]);
+
+	// Filter images when images array or statusFilter changes
+	useEffect(() => {
+		if (statusFilter === "all") {
+			setFilteredImages(images);
+		} else {
+			setFilteredImages(
+				images.filter((image) => image.status === statusFilter)
+			);
+		}
+	}, [images, statusFilter]);
 
 	const handleDelete = async (id: string) => {
 		if (window.confirm("Are you sure you want to delete this image?")) {
@@ -58,14 +74,19 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 		return <div className="error">{error}</div>;
 	}
 
-	if (images.length === 0) {
-		return <div className="no-images">No images uploaded yet</div>;
+	if (filteredImages.length === 0) {
+		return (
+			<div className="no-images">
+				No {statusFilter !== "all" ? statusFilter : ""} images available
+			</div>
+		);
 	}
 
 	return (
 		<div className="image-gallery">
+			<h2>{title}</h2>
 			<div className="gallery-grid">
-				{images.map((image) => (
+				{filteredImages.map((image) => (
 					<div key={image.id} className="gallery-item">
 						<div className="image-card">
 							<img
