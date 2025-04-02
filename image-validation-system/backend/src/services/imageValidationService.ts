@@ -204,13 +204,20 @@ export class ImageValidationService {
 	 */
 	async convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
 		try {
-			return await heicConvert({
+			console.log("Starting HEIC to JPEG conversion...");
+			const result = await heicConvert({
 				buffer,
 				format: "JPEG",
 				quality: 90,
 			});
+			console.log("HEIC conversion successful - output size:", result.length);
+			return result;
 		} catch (error) {
 			console.error("Error converting HEIC to JPEG:", error);
+			if (error instanceof Error) {
+				console.error("Error details:", error.message);
+				console.error("Error stack:", error.stack);
+			}
 			throw new Error("Failed to convert HEIC image to JPEG");
 		}
 	}

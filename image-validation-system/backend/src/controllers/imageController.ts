@@ -31,17 +31,24 @@ export const uploadImage = async (
 		let validationErrors: string[] = [];
 
 		// Convert HEIC to JPEG if needed
+		let originalFileName = originalName;
 		if (
 			mimeType === "image/heic" ||
 			fileExtension === ".heic" ||
 			fileExtension === ".HEIC"
 		) {
 			try {
-				// For now, just reject HEIC files until we can get heic-convert working properly
-				validationErrors.push("HEIC conversion not supported in this version");
-				status = "invalid";
-				// fileBuffer = await imageValidation.convertHeicToJpeg(fileBuffer);
-				// mimeType = "image/jpeg";
+				// Convert HEIC to JPEG
+				fileBuffer = await imageValidation.convertHeicToJpeg(fileBuffer);
+				mimeType = "image/jpeg";
+
+				// Update the filename to reflect the conversion
+				const fileNameWithoutExt = originalName.substring(
+					0,
+					originalName.lastIndexOf(".")
+				);
+				originalFileName = `${fileNameWithoutExt}.jpg`;
+				console.log(`Converted HEIC: ${originalName} -> ${originalFileName}`);
 			} catch (error) {
 				console.error("HEIC conversion error:", error);
 				res.status(400).json({ error: "Failed to convert HEIC image" });
@@ -92,7 +99,7 @@ export const uploadImage = async (
 		// Upload file to S3
 		const s3Upload = await s3Service.uploadFile(
 			fileBuffer,
-			status === "valid" ? originalName : `invalid_${originalName}`
+			status === "valid" ? originalFileName : `invalid_${originalFileName}`
 		);
 
 		// Store image metadata in database

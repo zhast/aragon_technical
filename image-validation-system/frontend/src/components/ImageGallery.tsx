@@ -69,7 +69,15 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 				{images.map((image) => (
 					<div key={image.id} className="gallery-item">
 						<div className="image-card">
-							<img src={image.url} alt={image.originalName} />
+							<img
+								src={image.url}
+								alt={image.originalName}
+								onError={(e) => {
+									console.error(`Failed to load image: ${image.url}`);
+									e.currentTarget.src =
+										"https://via.placeholder.com/400x300?text=Image+Load+Error";
+								}}
+							/>
 							<div className="image-info">
 								<p className="image-name">{image.originalName}</p>
 								<p className="image-size">{Math.round(image.size / 1024)} KB</p>

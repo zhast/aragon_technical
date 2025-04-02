@@ -123,7 +123,7 @@ The project has progressed through the implementation plan with the following co
 - Created API endpoints for image operations
 - Implemented frontend with React.js for image upload and display
 - Added image validation service for resolution, blur, and similarity checks
-- Implemented HEIC to JPEG conversion
+- Implemented HEIC to JPEG conversion (now enabled)
 - Set up real-time feedback for image validation status
 - Created an image gallery to display uploaded images with status
 - Fixed port configuration between frontend and backend
@@ -137,14 +137,15 @@ The system performs several validation checks on uploaded images:
 
 ### 1. Resolution Validation
 
-- Rejects images that don't meet minimum dimensions (800x600 pixels)
+- Rejects images that do not meet minimum dimensions (800x600 pixels)
 - Implemented using the Sharp library to extract image metadata
 
 ### 2. Format Validation
 
 - Accepts only JPG, PNG, and HEIC formats
 - Client-side validation in the frontend using file extension and MIME type checks
-- HEIC files are rejected in the current version (conversion to be fully implemented)
+- HEIC files are automatically converted to JPEG format before processing
+- Conversion implemented using the heic-convert library
 
 ### 3. Blur Detection
 
