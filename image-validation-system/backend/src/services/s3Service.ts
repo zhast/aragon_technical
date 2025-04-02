@@ -2,11 +2,12 @@ import {
 	PutObjectCommand,
 	GetObjectCommand,
 	DeleteObjectCommand,
-	ObjectCannedACL,
 } from "@aws-sdk/client-s3";
 import { s3Client, bucketName } from "../config/s3Config";
 import { randomUUID } from "crypto";
 import { Readable } from "stream";
+import fs from "fs";
+import path from "path";
 
 /**
  * Service for handling S3 operations
@@ -21,34 +22,133 @@ export class S3Service {
 	async uploadFile(
 		file: Buffer,
 		fileName: string
-	): Promise<{ url: string; key: string }> {
+	): Promise<{ url: string; key: string; storageType: string }> {
 		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "";
 		const contentType = this.getContentType(fileExtension);
 		const key = `${randomUUID()}.${fileExtension}`;
+
+		// Ensure uploads directory exists for fallback
+		this.ensureUploadsDirectoryExists();
 
 		const params = {
 			Bucket: bucketName,
 			Key: key,
 			Body: file,
 			ContentType: contentType,
-			ACL: "public-read" as ObjectCannedACL,
 		};
 
 		try {
+			console.log("\n=== S3 UPLOAD ATTEMPT ===");
+			console.log("Bucket:", params.Bucket);
+			console.log("Region:", process.env.AWS_REGION || "default");
+			console.log("File:", fileName, "->", key);
+
+			// Check if we have the required credentials before attempting to upload
+			if (
+				!process.env.AWS_ACCESS_KEY_ID ||
+				!process.env.AWS_SECRET_ACCESS_KEY
+			) {
+				throw new Error(
+					"AWS credentials not configured. Using local fallback."
+				);
+			}
+
 			const command = new PutObjectCommand(params);
 			await s3Client.send(command);
 
-			// Construct the URL directly since we're using public-read ACL
-			const url = `https://${bucketName}.s3.amazonaws.com/${key}`;
+			// Construct the URL using virtual-hosted style format
+			const region = process.env.AWS_REGION || "us-west-1";
+			const url = `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+			console.log("\n✅ S3 UPLOAD SUCCESSFUL");
+			console.log("S3 URL:", url);
 
 			return {
 				url,
 				key,
+				storageType: "s3",
 			};
 		} catch (error) {
-			console.error("Error uploading file to S3:", error);
-			throw new Error("Failed to upload file to S3");
+			console.error("\n❌ S3 UPLOAD FAILED");
+
+			if (error instanceof Error) {
+				console.error("Error details:", error.message);
+
+				// Check for specific AWS errors
+				if (error.message.includes("AccessDenied")) {
+					console.error("S3 access denied - check your AWS IAM permissions");
+				} else if (error.message.includes("InvalidAccessKeyId")) {
+					console.error(
+						"Invalid AWS access key - check your AWS_ACCESS_KEY_ID"
+					);
+				} else if (error.message.includes("SignatureDoesNotMatch")) {
+					console.error(
+						"AWS signature mismatch - check your AWS_SECRET_ACCESS_KEY"
+					);
+				} else if (error.message.includes("NoSuchBucket")) {
+					console.error(
+						`Bucket "${bucketName}" does not exist - check your S3_BUCKET_NAME`
+					);
+				}
+
+				if ("$metadata" in error) {
+					console.error("AWS response metadata:", (error as any).$metadata);
+				}
+			}
+
+			// Fallback to local storage if S3 fails
+			try {
+				console.log("\n⚠️ USING LOCAL STORAGE FALLBACK");
+				const localFilePath = await this.saveFileLocally(file, fileExtension);
+
+				const port = process.env.PORT || 3001;
+				const localUrl = `http://localhost:${port}/uploads/${localFilePath}`;
+
+				console.log("Local file saved at:", localFilePath);
+				console.log("Local URL:", localUrl);
+
+				return {
+					url: localUrl,
+					key: localFilePath,
+					storageType: "local",
+				};
+			} catch (localError) {
+				console.error("\n❌ LOCAL STORAGE FALLBACK FAILED");
+				console.error(
+					"Error:",
+					localError instanceof Error ? localError.message : localError
+				);
+				throw new Error("Failed to upload file to S3 and local fallback");
+			}
 		}
+	}
+
+	/**
+	 * Ensure the uploads directory exists
+	 */
+	private ensureUploadsDirectoryExists(): void {
+		const uploadsDir = path.join(__dirname, "../../uploads");
+		if (!fs.existsSync(uploadsDir)) {
+			fs.mkdirSync(uploadsDir, { recursive: true });
+			console.log(`Created uploads directory at ${uploadsDir}`);
+		}
+	}
+
+	/**
+	 * Save file to local filesystem as fallback
+	 * @param file File buffer
+	 * @param extension File extension
+	 * @returns Local file path
+	 */
+	private async saveFileLocally(
+		file: Buffer,
+		extension: string
+	): Promise<string> {
+		const fileName = `${randomUUID()}.${extension}`;
+		const uploadsDir = path.join(__dirname, "../../uploads");
+		const filePath = path.join(uploadsDir, fileName);
+
+		await fs.promises.writeFile(filePath, file);
+		return fileName;
 	}
 
 	/**
@@ -112,15 +212,16 @@ export class S3Service {
 	}
 
 	/**
-	 * Get content type based on file extension
+	 * Get the appropriate content type based on file extension
 	 * @param extension File extension
-	 * @returns Content type
+	 * @returns Content type string
 	 */
 	private getContentType(extension: string): string {
 		const contentTypes: Record<string, string> = {
 			jpg: "image/jpeg",
 			jpeg: "image/jpeg",
 			png: "image/png",
+			gif: "image/gif",
 			heic: "image/heic",
 		};
 

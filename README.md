@@ -123,21 +123,52 @@ We're following the implementation plan step by step. Current status:
 - Created an image gallery to display uploaded images with status
 - Fixed port configuration between frontend and backend
 - Upgraded AWS SDK from v2 to v3 for improved performance and modern features
+- Fixed S3 bucket configuration and permissions for public image access
 
 ## Running the Project
 
-1. Start the backend server:
+1. Set up the environment:
+
+   ```
+   # Copy and update environment variables
+   cp .env.example .env
+   ```
+
+2. Configure AWS S3 (required for image storage):
+
+   - Follow the setup instructions in `backend/AWS_SETUP.md`
+   - Alternatively, the system will fall back to local storage if S3 is not configured
+   - **S3 Bucket Policy Setup**:
+     - Go to your S3 bucket in the AWS Console
+     - Under Permissions, uncheck "Block all public access"
+     - Add the following bucket policy (replace BUCKET_NAME with your bucket name):
+     ```json
+     {
+     	"Version": "2012-10-17",
+     	"Statement": [
+     		{
+     			"Sid": "PublicReadGetObject",
+     			"Effect": "Allow",
+     			"Principal": "*",
+     			"Action": "s3:GetObject",
+     			"Resource": "arn:aws:s3:::BUCKET_NAME/*"
+     		}
+     	]
+     }
+     ```
+
+3. Start the backend server:
 
    ```
    cd backend
    npm run dev
    ```
 
-2. Start the frontend development server:
+4. Start the frontend development server:
 
    ```
    cd frontend
    npm start
    ```
 
-3. Access the application at: http://localhost:3000
+5. Access the application at: http://localhost:3000
