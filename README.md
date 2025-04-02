@@ -15,12 +15,12 @@ This project implements a system for uploading, validating, and categorizing ima
 ### Backend
 
 - [⬜] REST API using Node.js with Express or GraphQL
-- [⬜] PostgreSQL database for metadata storage
+- [✅] PostgreSQL database for metadata storage
 - [⬜] Amazon S3 or equivalent for image storage
 - [⬜] RESTful or GraphQL conventions
 - [⬜] Efficient system for image processing
 - [⬜] Secure file handling
-- [⬜] ORM integration (Prisma, Knex.js, etc.)
+- [✅] ORM integration (Prisma, Knex.js, etc.)
 - [⬜] Optimized database queries
 - [⬜] HEIC to PNG/JPEG conversion
 
@@ -38,16 +38,16 @@ This project implements a system for uploading, validating, and categorizing ima
 ### Step 1: Project Setup & Architecture
 
 - [⬜] Create frontend React application
-- [⬜] Set up Node.js/Express backend
-- [⬜] Configure PostgreSQL database
+- [✅] Set up Node.js/Express backend
+- [✅] Configure PostgreSQL database
 - [⬜] Set up S3 bucket or equivalent storage
 - [⬜] Design system architecture and API endpoints
 
 ### Step 2: Database Design
 
-- [⬜] Design schema for image metadata
-- [⬜] Select and configure ORM (Prisma recommended)
-- [⬜] Create migration scripts
+- [✅] Design schema for image metadata
+- [✅] Select and configure ORM (Prisma recommended)
+- [✅] Create migration scripts
 
 ### Step 3: Backend Core
 
@@ -109,4 +109,8 @@ This project implements a system for uploading, validating, and categorizing ima
 
 We're following the implementation plan step by step. Current status:
 
-- Setting up project structure and beginning implementation.
+- Set up project structure and began implementation
+- Created PostgreSQL database schema for image metadata storage
+- Set up Prisma ORM and created database migrations
+- Configured backend environment and database connection
+- Basic backend server is running
