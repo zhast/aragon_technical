@@ -131,6 +131,34 @@ The project has progressed through the implementation plan with the following co
 - Fixed S3 bucket configuration and permissions for public image access
 - Implemented face detection using AWS Rekognition to reject images with too small faces or multiple faces
 
+## HEIC Support Implementation
+
+The system now supports HEIC image format with automatic conversion to JPEG:
+
+1. **Frontend Support**:
+
+   - Upload component accepts .heic files
+   - Client-side validation allows HEIC file extension and MIME type
+
+2. **Backend Conversion**:
+
+   - Uses heic-convert library to transform HEIC files to JPEG format
+   - Automatically updates the file extension and MIME type after conversion
+   - Maintains original filename with .jpg extension for better compatibility
+
+3. **Error Handling**:
+
+   - Robust error handling for conversion failures
+   - Detailed logging for troubleshooting
+   - Fallback image shown in UI if image loading fails
+
+4. **Image Processing Pipeline**:
+   - HEIC files are converted before any validation checks are performed
+   - All validation logic works with the converted JPEG image
+   - Storage service receives the converted image for upload
+
+This implementation ensures a seamless experience for users uploading HEIC images while maintaining compatibility with all validation services.
+
 ## Image Validation Details
 
 The system performs several validation checks on uploaded images:
